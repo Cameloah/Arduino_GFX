@@ -1443,6 +1443,31 @@ void Arduino_GFX::draw3bitRGBBitmap(int16_t x, int16_t y,
 
 /**************************************************************************/
 /*!
+    @brief  Draw a RAM-resident 8-bit image (RGB 3/2/3) at the specified (x,y) position.
+    @param  x       Top left corner x coordinate
+    @param  y       Top left corner y coordinate
+    @param  bitmap  byte array with 16-bit color bitmap
+    @param  w       Width of bitmap in pixels
+    @param  h       Height of bitmap in pixels
+*/
+/**************************************************************************/
+void Arduino_GFX::draw8bitRGBBitmap(int16_t x, int16_t y,
+                                     uint8_t *bitmap, int16_t w, int16_t h)
+{
+    int32_t offset = 0;
+    startWrite();
+    for (int16_t j = 0; j < h; j++, y++)
+    {
+        for (int16_t i = 0; i < w; i++)
+        {
+            writePixel(x + i, y, bitmap[offset++]);
+        }
+    }
+    endWrite();
+}
+
+/**************************************************************************/
+/*!
     @brief  Draw a PROGMEM-resident 16-bit image (RGB 5/6/5) at the specified (x,y) position.
     @param  x       Top left corner x coordinate
     @param  y       Top left corner y coordinate

@@ -7,6 +7,7 @@
 #include "Arduino_TFT.h"
 #include "font/glcdfont.h"
 
+
 Arduino_TFT::Arduino_TFT(
     Arduino_DataBus *bus, int8_t rst, uint8_t r,
     bool ips, int16_t w, int16_t h,
@@ -593,6 +594,85 @@ void Arduino_TFT::drawIndexedBitmap(int16_t x, int16_t y,
     _bus->writeIndexedPixels(bitmap, color_index, len);
     endWrite();
   }
+}
+
+/**************************************************************************/
+/*!
+   @brief   Draw a RAM-resident 16-bit image (RGB 5/6/5) at the specified (x,y) position.
+   For 8-bit display devices; no color reduction performed.
+    @param    x   Top left corner x coordinate
+    @param    y   Top left corner y coordinate
+    @param    bitmap  byte array with 16-bit color bitmap
+    @param    w   Width of bitmap in pixels
+    @param    h   Height of bitmap in pixels
+*/
+/**************************************************************************/
+void Arduino_TFT::draw8bitRGBBitmap(int16_t x, int16_t y,
+                                     uint8_t *bitmap, int16_t w, int16_t h)
+{
+  if (
+          ((x + w - 1) < 0) || // Outside left
+          ((y + h - 1) < 0) || // Outside top
+          (x > _max_x) ||      // Outside right
+          (y > _max_y)         // Outside bottom
+          )
+  {
+    return;
+  }
+
+  else if (
+          (x < 0) ||                // Clip left
+          (y < 0) ||                // Clip top
+          ((x + w - 1) > _max_x) || // Clip right
+          ((y + h - 1) > _max_y)    // Clip bottom
+          )
+  {
+    return;
+  }
+
+
+  startWrite();
+  writeAddrWindow(x, y, w, h);
+
+  // Line buffer makes plotting faster
+  uint16_t  lineBuf[w];
+
+  uint8_t  blue[] = {0, 11, 21, 31}; // blue 2 to 5 bit colour lookup table
+
+  uint32_t _lastColor = -1; // Set to illegal value
+
+  // Used to store last shifted colour
+  uint8_t msbColor = 0;
+  uint8_t lsbColor = 0;
+
+  bitmap += x + y * w;
+  while (h--) {
+    uint32_t len = w;
+    uint8_t* ptr = bitmap;
+    uint8_t* linePtr = (uint8_t*)lineBuf;
+
+    while(len--) {
+      uint32_t color = *ptr++;
+
+      // Shifts are slow so check if colour has changed first
+      if (color != _lastColor) {
+        //          =====Green=====     ===============Red==============
+        lsbColor = (color & 0x1C)>>2 | (color & 0xC0)>>3 | (color & 0xE0);
+        //          =====Green=====    =======Blue======
+        msbColor = (color & 0x1C)<<3 | blue[color & 0x03];
+        _lastColor = color;
+      }
+
+      *linePtr++ = msbColor;
+      *linePtr++ = lsbColor;
+    }
+
+    _bus->writePixels(lineBuf, w);
+
+    bitmap += w;
+  }
+
+  endWrite();
 }
 
 /**************************************************************************/
